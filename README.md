@@ -2,4 +2,4 @@
 
 [![Build Status](https://travis-ci.org/copperwall/copperwall-dataloader.svg?branch=master)](https://travis-ci.org/copperwall/copperwall-dataloader)
 
-A DataLoader implementation written in TypeScript.
+A [DataLoader](https://github.com/graphql/dataloader) implementation written in TypeScript.
