@@ -10,6 +10,7 @@ interface QueueEntry<K> {
 
 function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
     let queue: Array<QueueEntry<K>> = [];
+    let cache: Map<K, Promise<V>> = new Map();
 
     function executeBatch(): void {
         const oldQueue = queue;
@@ -24,12 +25,24 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
                     oldQueue[index].resolve(value);
                 }
             });
+        }).catch((err: Error) => {
+            // TODO: Make this more comprehensive.
+            // Should this reject all promises in the batch?
+            // Could use that debug package to log the error instead of console.debug as well.
+            console.debug(`Experience error when executing batch ${err.message}`);
         });
     }
 
     return {
         load: key => {
-            return new Promise((resolve, reject) => {
+            // TODO: Check if that key exists in the cache, return early if it does.
+            // Or should this be done in the executeBatch function?
+            // Let's try it here first.
+            if (cache.has(key)) {
+                return (cache.get(key) as Promise<V>);
+            }
+
+            const loadResult = new Promise<V>((resolve, reject) => {
                 queue.push({
                     key,
                     resolve,
@@ -41,6 +54,10 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
                     Promise.resolve().then(() => process.nextTick(executeBatch));
                 }
             });
+
+            cache.set(key, loadResult);
+
+            return loadResult;
         }
     }
 }

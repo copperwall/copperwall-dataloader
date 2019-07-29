@@ -47,4 +47,45 @@ describe('dataloader', () => {
         const value = await testDataLoader.load(1);
         expect(batchCalls).toEqual([[1, 2]]);
     });
+
+    describe('Caching', () => {
+        test('results should be cached', async () => {
+            function batchFn(keys: ReadonlyArray<number>) {
+                return Promise.resolve(keys);
+            }
+            const testDataLoader = dataloader<number, number>(batchFn);
+
+            const p1 = testDataLoader.load(1);
+            const p2 = testDataLoader.load(1);
+
+            expect(p1).toBe(p2);
+
+            const [v1, v2] = await Promise.all([p1, p2]);
+
+            expect(v1).toBe(1);
+            expect(v1).toBe(1);
+        });
+
+        test('cached results should not be included in batch', async () => {
+            const batchCalls: Array<ReadonlyArray<number>> = [];
+            function batchFn(keys: ReadonlyArray<number>) {
+                batchCalls.push(keys);
+
+                return Promise.resolve(keys);
+            }
+
+            const testDataLoader = dataloader<number, number>(batchFn);
+
+            await testDataLoader.load(1);
+
+            const p1 = testDataLoader.load(1);
+            const p2 = testDataLoader.load(2);
+
+            const [v1, v2] = await Promise.all([p1, p2]);
+
+            expect(batchCalls).toEqual([[1], [2]]);
+            expect(v1).toBe(1);
+            expect(v2).toBe(2);
+        });
+    })
 })
