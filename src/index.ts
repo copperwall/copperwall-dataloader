@@ -37,7 +37,8 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
                 })
 
                 if (queue.length === 1) {
-                    process.nextTick(executeBatch);
+                    // Execute the next batch after the promise microtask queue has finished.
+                    Promise.resolve().then(() => process.nextTick(executeBatch));
                 }
             });
         }
