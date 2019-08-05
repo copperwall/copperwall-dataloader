@@ -1,6 +1,7 @@
 type BatchFn<K, V> = (keys: ReadonlyArray<K>) => Promise<ReadonlyArray<V | Error>>;
 interface DataLoader<K, V> {
-    load: (key: K) => Promise<V>
+    load: (key: K) => Promise<V>,
+    delete: (key: K) => void
 }
 interface QueueEntry<K> {
     key: K,
@@ -34,7 +35,7 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
     }
 
     return {
-        load: key => {
+        load: (key: K): Promise<V> => {
             // TODO: Check if that key exists in the cache, return early if it does.
             // Or should this be done in the executeBatch function?
             // Let's try it here first.
@@ -58,6 +59,9 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
             cache.set(key, loadResult);
 
             return loadResult;
+        },
+        delete: (key: K): void => {
+            cache.delete(key);
         }
     }
 }
