@@ -44,8 +44,70 @@ describe('dataloader', () => {
         Promise.resolve().then(() => {
             testDataLoader.load(2);
         });
-        const value = await testDataLoader.load(1);
+        await testDataLoader.load(1);
         expect(batchCalls).toEqual([[1, 2]]);
+    });
+
+    test('should return a rejected promise if one of the values is an error', async () => {
+        expect.assertions(2);
+        // Return error when key is null.
+        const testDataLoader = dataloader<number, number>(function(keys) {
+            const values = keys.map(key => key === 0 ? new Error('oops') : key);
+
+            return Promise.all(values);
+        });
+
+        try {
+            await testDataLoader.load(0);
+        } catch (e) {
+            expect(e).toBeInstanceOf(Error);
+            expect(e.message).toBe('oops');
+        }
+    });
+
+    test('should only return rejected promises for errors', async () => {
+        expect.assertions(3);
+        // Return error when key is null.
+        const testDataLoader = dataloader<number, number>(function(keys) {
+            const values = keys.map(key => key === 0 ? new Error('oops') : key);
+
+            return Promise.all(values);
+        });
+
+        const v1 = await testDataLoader.load(1);
+        expect(v1).toEqual(1);
+
+
+        try {
+            await testDataLoader.load(0);
+        } catch (e) {
+            expect(e).toBeInstanceOf(Error);
+            expect(e.message).toBe('oops');
+        }
+    });
+
+    test('loadAll should return a single promise with all values', async () => {
+        const testDataLoader = dataloader<number, number>(function(keys) {
+            return Promise.all(keys);
+        });
+
+        const values = await testDataLoader.loadMany([1,2]);
+        expect(values).toEqual([1,2]);
+    });
+
+    test('loadAll should return a rejected promise with if any values are errors', async () => {
+        expect.assertions(2);
+        const testDataLoader = dataloader<number, number>(function(keys) {
+            const newKeys = [ new Error('oops'), ...keys.slice(1, keys.length)];
+            return Promise.all(newKeys);
+        });
+
+        try {
+            await testDataLoader.loadMany([1,2]);
+        } catch (e) {
+            expect(e).toBeInstanceOf(Error);
+            expect(e.message).toBe('oops');
+        }
     });
 
     describe('Caching', () => {

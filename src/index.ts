@@ -66,6 +66,7 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
         return Promise.all(keys.map(load));
     }
 
+    // Can't name a function delete because it's a reserved word.
     function deleteFn(key: K): void {
         cache.delete(key);
     }
