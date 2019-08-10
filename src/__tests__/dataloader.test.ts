@@ -126,5 +126,43 @@ describe('dataloader', () => {
 
             expect(batchCalls).toEqual([[1, 2], [1]]);
         });
+
+        test('clearAll should clear the entire cache', async () => {
+            const batchCalls: Array<ReadonlyArray<number>> = [];
+            function batchFn(keys: ReadonlyArray<number>) {
+                batchCalls.push(keys);
+                return Promise.resolve(keys);
+            }
+            const testDataLoader = dataloader<number, number>(batchFn);
+
+            const p1 = testDataLoader.load(1);
+            const p2 = testDataLoader.load(1);
+            const p3 = testDataLoader.load(2);
+
+            expect(p1).toBe(p2);
+
+            const [v1, v2, v3] = await Promise.all([p1, p2, p3]);
+
+            expect(v1).toBe(1);
+            expect(v2).toBe(1);
+            expect(v3).toBe(2);
+
+            testDataLoader.clearAll();
+
+            // No values should be cached anymore.
+            const p4 = testDataLoader.load(1);
+            const p5 = testDataLoader.load(2);
+
+            const [v4, v5] = await Promise.all([p4, p5]);
+
+            expect(p4).not.toBe(p1);
+            expect(p5).not.toBe(p3);
+
+            expect(v4).toBe(1);
+            expect(v5).toBe(2);
+
+            expect(batchCalls).toEqual([[1, 2], [1, 2]]);
+
+        });
     })
 })
