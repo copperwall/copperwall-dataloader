@@ -170,7 +170,7 @@ describe('dataloader', () => {
             expect(v2).toBe(1);
             expect(v3).toBe(2);
 
-            testDataLoader.delete(1);
+            testDataLoader.clear(1);
 
             // 1 should no longer be cached, but 2 should still be.
             const p4 = testDataLoader.load(1);

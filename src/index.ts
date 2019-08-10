@@ -2,7 +2,7 @@ type BatchFn<K, V> = (keys: ReadonlyArray<K>) => Promise<ReadonlyArray<V | Error
 interface DataLoader<K, V> {
     load: (key: K) => Promise<V>,
     loadMany: (keys: ReadonlyArray<K>) => Promise<ReadonlyArray<V>>,
-    delete: (key: K) => void,
+    clear: (key: K) => void,
     clearAll: () => void
 }
 interface QueueEntry<K> {
@@ -66,8 +66,7 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
         return Promise.all(keys.map(load));
     }
 
-    // Can't name a function delete because it's a reserved word.
-    function deleteFn(key: K): void {
+    function clear(key: K): void {
         cache.delete(key);
     }
 
@@ -78,7 +77,7 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
     return {
         load,
         loadMany,
-        delete: deleteFn,
+        clear,
         clearAll
     }
 }
