@@ -110,6 +110,49 @@ describe('dataloader', () => {
         }
     });
 
+    test('should reject all promises if batchFn promise rejects', async () => {
+        expect.assertions(7);
+        const batchCalls: Array<ReadonlyArray<number>> = [];
+        let shouldFail = true;
+
+        const testDataLoader = dataloader<number, number>(function(keys) {
+            batchCalls.push(keys);
+            if (shouldFail) {
+                return Promise.reject(new Error('fatal error'));
+            }
+            return Promise.all(keys);
+        });
+
+        const p1 = testDataLoader.load(1);
+        const p2 = testDataLoader.load(2);
+
+        let afterErrors = Promise.all([
+            p1.catch(err => {
+                expect(err).toBeInstanceOf(Error);
+                expect(err.message).toBe('fatal error');
+            }),
+            p2.catch(err => {
+                expect(err).toBeInstanceOf(Error);
+                expect(err.message).toBe('fatal error');
+            })
+        ]);
+
+        await afterErrors;
+
+        shouldFail = false;
+
+        const [v1, v2] = await Promise.all([
+            testDataLoader.load(1),
+            testDataLoader.load(2)
+        ]);
+
+        expect(v1).toBe(1);
+        expect(v2).toBe(2);
+
+        // Assert that values aren't cached if the batchFn fails.
+        expect(batchCalls).toEqual([[1, 2], [1, 2]]);
+    });
+
     describe('Caching', () => {
         test('results should be cached', async () => {
             function batchFn(keys: ReadonlyArray<number>) {

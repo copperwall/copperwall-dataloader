@@ -21,7 +21,7 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
         const keys = oldQueue.map(entry => entry.key);
 
         batchFn(keys).then(values => {
-            values.forEach(function (value, index) {
+            values.forEach(function(value, index) {
                 if (value instanceof Error) {
                     oldQueue[index].reject(value);
                 } else {
@@ -29,10 +29,10 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
                 }
             });
         }).catch((err: Error) => {
-            // TODO: Make this more comprehensive.
-            // Should this reject all promises in the batch?
-            // Could use that debug package to log the error instead of console.debug as well.
-            console.debug(`Experience error when executing batch ${err.message}`);
+            oldQueue.forEach(function(entry) {
+                clear(entry.key);
+                entry.reject(err);
+            });
         });
     }
 
