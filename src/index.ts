@@ -1,6 +1,7 @@
 type BatchFn<K, V> = (keys: ReadonlyArray<K>) => Promise<ReadonlyArray<V | Error>>;
 interface DataLoader<K, V> {
     load: (key: K) => Promise<V>,
+    loadMany: (keys: ReadonlyArray<K>) => Promise<ReadonlyArray<V>>,
     delete: (key: K) => void,
     clearAll: () => void
 }
@@ -35,38 +36,49 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
         });
     }
 
-    return {
-        load: (key: K): Promise<V> => {
-            // TODO: Check if that key exists in the cache, return early if it does.
-            // Or should this be done in the executeBatch function?
-            // Let's try it here first.
-            if (cache.has(key)) {
-                return (cache.get(key) as Promise<V>);
-            }
-
-            const loadResult = new Promise<V>((resolve, reject) => {
-                queue.push({
-                    key,
-                    resolve,
-                    reject
-                })
-
-                if (queue.length === 1) {
-                    // Execute the next batch after the promise microtask queue has finished.
-                    Promise.resolve().then(() => process.nextTick(executeBatch));
-                }
-            });
-
-            cache.set(key, loadResult);
-
-            return loadResult;
-        },
-        delete: (key: K): void => {
-            cache.delete(key);
-        },
-        clearAll: (): void => {
-            cache.clear();
+    function load(key: K): Promise<V> {
+        // TODO: Check if that key exists in the cache, return early if it does.
+        // Or should this be done in the executeBatch function?
+        // Let's try it here first.
+        if (cache.has(key)) {
+            return (cache.get(key) as Promise<V>);
         }
+
+        const loadResult = new Promise<V>((resolve, reject) => {
+            queue.push({
+                key,
+                resolve,
+                reject
+            })
+
+            if (queue.length === 1) {
+                // Execute the next batch after the promise microtask queue has finished.
+                Promise.resolve().then(() => process.nextTick(executeBatch));
+            }
+        });
+
+        cache.set(key, loadResult);
+
+        return loadResult;
+    }
+
+    function loadMany(keys: ReadonlyArray<K>): Promise<ReadonlyArray<V>> {
+        return Promise.all(keys.map(load));
+    }
+
+    function deleteFn(key: K): void {
+        cache.delete(key);
+    }
+
+    function clearAll(): void {
+        cache.clear();
+    }
+
+    return {
+        load,
+        loadMany,
+        delete: deleteFn,
+        clearAll
     }
 }
 
