@@ -1,4 +1,4 @@
-import dataloader from '../index';
+import dataloader, { BatchFn } from '../index';
 
 describe('dataloader', () => {
     test('should group loaded keys together', async () => {
@@ -268,6 +268,49 @@ describe('dataloader', () => {
 
             expect(batchCalls).toEqual([[1, 2], [1, 2]]);
 
+        });
+
+        test('prime should set a promise value of the value at the key given', async () => {
+            const batchFn = jest.fn(keys => Promise.all(keys));
+            const testDataLoader = dataloader<number, number>((batchFn as BatchFn<number, number>));
+
+            testDataLoader.prime(1, 1);
+
+            const v1 = await testDataLoader.load(1);
+
+            expect(v1).toBe(1);
+            expect(batchFn).not.toHaveBeenCalled();
+        });
+
+        test('prime should set a rejected promise value of the error value at the key given', async () => {
+            expect.assertions(3);
+            const batchFn = jest.fn(keys => Promise.all(keys));
+            const testDataLoader = dataloader((batchFn as BatchFn<number, number>));
+
+            const e = new Error('fatal error');
+            testDataLoader.prime(1, (e as any));
+
+            try {
+                await testDataLoader.load(1);
+            } catch (e) {
+                expect(e).toBeInstanceOf(Error);
+                expect(e.message).toBe('fatal error');
+            }
+
+            expect(batchFn).not.toHaveBeenCalled();
+        });
+
+        test('prime should not override an existing key', async () => {
+            const batchFn = jest.fn(keys => Promise.all(keys));
+            const testDataLoader = dataloader<number, number>((batchFn as BatchFn<number, number>));
+
+            testDataLoader.prime(1, 1);
+            testDataLoader.prime(1, 2);
+
+            const v1 = await testDataLoader.load(1);
+
+            expect(v1).toBe(1);
+            expect(batchFn).not.toHaveBeenCalled();
         });
     })
 })

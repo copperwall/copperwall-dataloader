@@ -1,9 +1,10 @@
-type BatchFn<K, V> = (keys: ReadonlyArray<K>) => Promise<ReadonlyArray<V | Error>>;
+export type BatchFn<K, V> = (keys: ReadonlyArray<K>) => Promise<ReadonlyArray<V | Error>>;
 interface DataLoader<K, V> {
     load: (key: K) => Promise<V>,
     loadMany: (keys: ReadonlyArray<K>) => Promise<ReadonlyArray<V>>,
     clear: (key: K) => void,
-    clearAll: () => void
+    clearAll: () => void,
+    prime: (key: K, value: V) => void
 }
 interface QueueEntry<K> {
     key: K,
@@ -74,11 +75,20 @@ function dataloader<K, V>(batchFn: BatchFn<K, V>): DataLoader<K, V> {
         cache.clear();
     }
 
+    function prime(key: K, value: V): void {
+        const p = value instanceof Error ? Promise.reject(value) : Promise.resolve(value);
+
+        if (!cache.has(key)) {
+            cache.set(key, p);
+        }
+    }
+
     return {
         load,
         loadMany,
         clear,
-        clearAll
+        clearAll,
+        prime
     }
 }
 
